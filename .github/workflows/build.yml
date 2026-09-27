@@ -1,0 +1,50 @@
+name: Build Custom Android OS
+
+on:
+  workflow_dispatch: # Allows manual trigger from the Actions tab
+
+jobs:
+  build-rom:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Free Up Disk Space on Runner
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo apt-get clean
+
+      - name: Install Android Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32ncurses5-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc zip zlib1g-dev python3 repo
+
+      - name: Initialize LineageOS AOSP Base
+        run: |
+          mkdir -p ~/android-rom
+          cd ~/android-rom
+          repo init -u https://github.com/LineageOS/android.git -b lineage-21.0 --git-lfs
+          repo sync -c --no-clone-bundle --no-tags -j$(nproc)
+
+      - name: Apply Custom AI Code & Tweaks
+        run: |
+          echo "Applying Pixel OS, One UI customization, and XOS performance tweaks..."
+          # AI-generated patches will be placed here in future steps
+
+      - name: Build Generic Emulator Image (aosp_x86_64)
+        run: |
+          cd ~/android-rom
+          source build/envsetup.sh
+          lunch aosp_x86_64-userdebug
+          mka -j$(nproc)
+
+      - name: Upload Built ROM Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Custom-Android-ROM
+          path: ~/android-rom/out/target/product/generic_x86_64/*.img
